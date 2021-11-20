@@ -12,17 +12,10 @@ namespace Proxet.Tournament
         public (string[] team1, string[] team2) GenerateTeams(string filePath)
         {
             //Please implement your algorithm there.
+
+            List<Tuple<int, string>>[] SortedPlayers = GetPlayersFromFile(filePath);
             string[][] teams = new string[TeamsCount][];
             for (int i = 0; i < TeamsCount; i++) { teams[i] = new string[PlayersPerTeam]; }
-
-            List<Tuple<int, int, string>>[] Players = GetPlayersFromFile(filePath);//take data from file and store it
-            LinkedList<Tuple<int, int, string>>[] SortedPlayers = new LinkedList<Tuple<int, int, string>>[CarTupesCount];
-
-            for (int i = 0; i < CarTupesCount; i++)
-            {
-                Players[i].Sort();
-                SortedPlayers[i] = new LinkedList<Tuple<int, int, string>>(Players[i]);
-            }//sort players by wait time into 3 linked lists with different car types
 
             for (int i = 0; i < TeamsCount; i++)
             {
@@ -30,17 +23,17 @@ namespace Proxet.Tournament
                 {
                     for (int b = 0; b < PlayersPerTeam / CarTupesCount; b++)
                     {
-                        teams[i][j * CarTupesCount + b] = SortedPlayers[j].Last.Value.Item3;
-                        SortedPlayers[j].RemoveLast();
+                        teams[i][j * CarTupesCount + b] = SortedPlayers[j][i * PlayersPerTeam / CarTupesCount + b].Item2;
                     }
                 }
             }//creating teams
+
             return (teams[0], teams[1]);
         }
-        private List<Tuple<int, int, string>>[] GetPlayersFromFile(string filePath)
+        private List<Tuple<int, string>>[] GetPlayersFromFile(string filePath)
         {
-            List<Tuple<int, int, string>>[] Players = new List<Tuple<int, int, string>>[CarTupesCount];
-            for (int i = 0; i < CarTupesCount; i++) { Players[i] = new List<Tuple<int, int, string>>(); }
+            List<Tuple<int, string>>[] Players = new List<Tuple<int, string>>[CarTupesCount];
+            for (int i = 0; i < CarTupesCount; i++) { Players[i] = new List<Tuple<int, string>>(PlayersPerTeam / CarTupesCount * TeamsCount); }
             try
             {
                 using (StreamReader reader = new StreamReader(filePath))
@@ -53,7 +46,36 @@ namespace Proxet.Tournament
                         if (Int32.TryParse(buff[1], out WaitingTime) && Int32.TryParse(buff[2], out CarType))
                         {
                             CarType--;
-                            Players[CarType].Add(new Tuple<int, int, string>(WaitingTime, CarType, buff[0]));
+
+                            if (Players[CarType].Count < PlayersPerTeam / CarTupesCount * TeamsCount)
+                            {
+                                Players[CarType].Add(new Tuple<int, string>(WaitingTime, buff[0]));
+                                if (Players[CarType].Count == PlayersPerTeam / CarTupesCount * TeamsCount)
+                                {
+                                    Players[CarType].Sort();
+                                }
+                                continue;
+                            }
+                            int lo = 0, hi = Players[CarType].Count - 1;
+                            while (lo < hi)
+                            {
+                                int index = (hi + lo) / 2;
+                                if (Players[CarType][index].Item1 < WaitingTime) lo = index + 1;
+                                else hi = index - 1;
+                            }
+                            if (Players[CarType][lo].Item1 < WaitingTime)
+                            {
+                                lo++;
+
+                            }
+                            for (int i = 0; i < lo - 1; i++)
+                            {
+                                Players[CarType][i] = Players[CarType][i + 1];
+                            }
+                            if (lo != 0)
+                            {
+                                Players[CarType][lo - 1] = new Tuple<int, string>(WaitingTime, buff[0]);
+                            }
                         }
                     }
                 }
